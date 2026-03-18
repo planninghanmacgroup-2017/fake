@@ -1,0 +1,2955 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flow Drilldown</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { --step-height: 52px; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans KR", sans-serif;
+      color: #0f172a;
+      min-height: 100vh;
+      background:
+        linear-gradient(#dfe6ee 1px, transparent 1px),
+        linear-gradient(90deg, #dfe6ee 1px, transparent 1px),
+        #f8fbff;
+      background-size: 40px 40px, 40px 40px, auto;
+    }
+
+    .board {
+      width: 100vw;
+      height: 100vh;
+      padding: 10px;
+      overflow: auto;
+    }
+    .sitemap-fab {
+      position: fixed;
+      left: 16px;
+      top: 16px;
+      z-index: 25;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+    }
+    .data-io {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 24;
+      display: grid;
+      gap: 6px;
+    }
+    .data-io-btn {
+      width: 38px;
+      height: 38px;
+      border: 1px solid #c7d5ea;
+      background: #ffffff;
+      color: #1e3a8a;
+      border-radius: 999px;
+      padding: 0;
+      font-weight: 800;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+    }
+    .data-io-btn svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      stroke-width: 2.6;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .data-io-btn:hover {
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+    .data-io-btn.export {
+      color: #1d4ed8;
+    }
+    .data-io-btn.import {
+      color: #0f766e;
+    }
+    .data-io-input {
+      display: none;
+    }
+    .board-track {
+      width: 100%;
+      min-width: max-content;
+      min-height: calc(100vh - 20px);
+      margin: 0;
+      padding-left: 80px;
+      padding-right: 80px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    #drillColumns {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .flow-panel {
+      width: 250px;
+      min-width: 250px;
+      background: #f8fbff;
+      border: 1px solid #dbe5f2;
+      border-radius: 16px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
+      padding: 12px 12px 14px;
+      height: calc(100vh - 20px);
+      max-height: calc(100vh - 20px);
+      overflow: auto;
+    }
+    #mainPanel {
+      display: block;
+      overflow: auto;
+    }
+    #mainFlow {
+      overflow: visible;
+      min-height: auto;
+      max-height: none;
+      padding-right: 2px;
+    }
+    .common-section {
+      border-top: 1px solid #dbe5f2;
+      padding-top: 10px;
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+      min-height: auto;
+      overflow: visible;
+    }
+    .common-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .common-title {
+      margin: 0;
+      font-size: 11px;
+      color: #60738f;
+      font-weight: 900;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .project-title {
+      margin: 0 0 8px;
+      font-size: 11px;
+      color: #60738f;
+      font-weight: 900;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .common-add-btn {
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 7px;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .common-list {
+      display: grid;
+      gap: 6px;
+    }
+    .common-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+    .common-btn {
+      border: 1px solid #d6e1f0;
+      background: #fff;
+      border-radius: 10px;
+      padding: 0 10px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+      cursor: pointer;
+      width: 100%;
+      height: var(--step-height);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+    }
+    .common-empty {
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 700;
+      background: #fff;
+      text-align: center;
+    }
+
+    .title {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 900;
+      color: #2f5d8a;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+    .panel-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 8px;
+    }
+    .panel-badge {
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #4f46e5;
+      border: 1px solid #dbe4ff;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .02em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .panel-head .title {
+      margin: 0;
+    }
+    .mode-btn {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      border-radius: 7px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .mode-btn.active {
+      background: #1d4ed8;
+      color: #fff;
+      border-color: #1d4ed8;
+    }
+    .panel-tools {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .add-end-btn {
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 7px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .flow-list {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+    .step-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+    .step-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .icon-btn {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+    .icon-btn.delete {
+      color: #b91c1c;
+      border-color: #fecaca;
+      background: #fff5f5;
+    }
+
+    .step-btn {
+      border: 1px solid #d6e1f0;
+      background: #ffffff;
+      border-radius: 11px;
+      padding: 0 10px;
+      text-align: left;
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+      cursor: pointer;
+      transition: all .15s ease;
+      width: 100%;
+      height: var(--step-height);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+    }
+    .step-btn:hover { border-color: #8fb0f6; }
+    .step-btn.active {
+      border-color: #4f46e5;
+      background: linear-gradient(135deg, #3f55f2 0%, #6b3cf1 100%);
+      box-shadow: 0 10px 18px rgba(79, 70, 229, 0.28);
+      color: #ffffff;
+    }
+    .step-btn.with-meta {
+      white-space: normal;
+      display: grid;
+      align-content: center;
+      gap: 1px;
+      height: var(--step-height);
+    }
+    .step-main {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .step-btn.active .step-main {
+      color: #ffffff;
+    }
+    .step-meta {
+      font-size: 10px;
+      font-weight: 700;
+      color: #7b8aa4;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .step-btn.active .step-meta {
+      color: #dbe6ff;
+    }
+
+    .down-arrow {
+      text-align: center;
+      color: #c8d3e6;
+      font-size: 18px;
+      line-height: 1;
+      user-select: none;
+    }
+    .insert-row {
+      text-align: center;
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+    }
+    .insert-btn {
+      border: 1px dashed #93c5fd;
+      background: #f8fbff;
+      color: #2563eb;
+      border-radius: 999px;
+      width: 26px;
+      height: 26px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .link-edit-btn {
+      border: 1px solid #f59e0b;
+      background: #fffbeb;
+      color: #b45309;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .link-clear-btn {
+      border: 1px solid #fecaca;
+      background: #fff5f5;
+      color: #b91c1c;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .down-arrow.broken {
+      color: #dc2626;
+      font-weight: 900;
+    }
+    .link-reason {
+      width: fit-content;
+      max-width: 170px;
+      border: 1px dashed #fda4af;
+      background: #fff1f2;
+      color: #9f1239;
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+      word-break: keep-all;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      justify-self: center;
+    }
+
+    .empty {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 700;
+      background: #fff;
+      line-height: 1.4;
+    }
+    .editor-panel {
+      display: none;
+      width: auto;
+      min-width: 760px;
+      max-width: 1240px;
+      flex: 1 1 auto;
+      height: calc(100vh - 20px);
+      max-height: calc(100vh - 20px);
+      background: #f8fbff;
+      border: 1px solid #dbe5f2;
+      border-radius: 16px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+    .editor-panel.open { display: grid; }
+    .editor-head {
+      padding: 16px 16px 14px;
+      border-bottom: 1px solid #dbe5f2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: #ffffff;
+      flex-wrap: nowrap;
+    }
+    .editor-head-info {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .editor-head-path {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 420px;
+      min-width: 280px;
+    }
+    .editor-head-path .label {
+      margin: 0;
+      white-space: nowrap;
+    }
+    .editor-head-path .path-wrap {
+      flex: 1 1 auto;
+    }
+    .editor-head-path .path-input {
+      padding: 8px 10px;
+      height: 34px;
+    }
+    .editor-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 900;
+      color: #1e293b;
+      line-height: 1.2;
+    }
+    .editor-sub {
+      margin: 4px 0 0;
+      font-size: 11px;
+      font-weight: 700;
+      color: #7a8da8;
+    }
+    .editor-close {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #475569;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      font-weight: 900;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .editor-body {
+      padding: 14px 16px 16px;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      background: #f8fbff;
+      min-height: 0;
+      overscroll-behavior: none;
+    }
+    .editor-card {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+    }
+    .image-card {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(460px, 1fr) auto auto auto;
+      gap: 10px;
+      overscroll-behavior: none;
+    }
+    .image-card > .label-row,
+    .image-card > .image-nav,
+    .image-card > .uploader {
+      display: flex;
+      gap: 8px;
+    }
+    .image-card > .image-nav {
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap;
+    }
+    .image-note-field {
+      display: grid;
+      gap: 4px;
+      align-content: start;
+    }
+    .label {
+      margin: 0 0 4px;
+      font-size: 10px;
+      color: #60738f;
+      font-weight: 900;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 0;
+    }
+    .label-row .label {
+      margin: 0;
+      white-space: nowrap;
+    }
+    .uploader {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 0;
+      width: 100%;
+    }
+    .file-input-hidden {
+      display: none;
+    }
+    .file-btn {
+      border: 1px solid #564cf5;
+      background: linear-gradient(135deg, #3f55f2 0%, #6b3cf1 100%);
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1.2;
+      white-space: nowrap;
+      flex: 1;
+      text-align: center;
+    }
+    .file-status {
+      font-size: 10px;
+      font-weight: 700;
+      color: #475569;
+      white-space: nowrap;
+    }
+    .path-wrap { margin-bottom: 0; }
+    .path-input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      padding: 10px 12px;
+      font-size: 12px;
+      outline: none;
+      background: #fff;
+    }
+    .path-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px #dbeafe;
+    }
+    .clear-btn {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #eef2f7;
+      color: #1e293b;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 10px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .preview {
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+      background: #f6f9ff;
+      height: 100%;
+      min-height: 460px;
+      max-height: 640px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      overscroll-behavior: none;
+    }
+    .image-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .nav-btn {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      border-radius: 9px;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .nav-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    .page-info {
+      min-width: 54px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #475569;
+    }
+    .editor-panel *::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+    .image-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      padding: 24px;
+    }
+    .image-modal.open {
+      display: flex;
+    }
+    .image-modal-inner {
+      position: relative;
+      width: min(92vw, 1600px);
+      height: min(90vh, 980px);
+      background: #0b1220;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+    }
+    .image-modal-nav {
+      position: absolute;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 2;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      padding: 6px 8px;
+    }
+    .image-modal-note {
+      position: absolute;
+      left: 50%;
+      bottom: 58px;
+      transform: translateX(-50%);
+      max-width: min(84vw, 1200px);
+      z-index: 2;
+      background: rgba(15, 23, 42, 0.62);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 12px;
+      color: #e2e8f0;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      padding: 8px 12px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: none;
+    }
+    .image-modal-note.show {
+      display: block;
+    }
+    .image-modal-btn {
+      border: 1px solid #64748b;
+      background: rgba(15, 23, 42, 0.6);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1.1;
+    }
+    .image-modal-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    .image-modal-page {
+      min-width: 56px;
+      text-align: center;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .image-modal img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #0b1220;
+    }
+    .image-modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      border: 1px solid #475569;
+      background: rgba(15, 23, 42, 0.75);
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 900;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .sitemap-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 70;
+      padding: 4px;
+    }
+    .sitemap-modal.open {
+      display: flex;
+    }
+    .sitemap-modal-inner {
+      width: min(100vw - 8px, 1800px);
+      height: min(100vh - 8px, 1200px);
+      background: #ffffff;
+      border: 1px solid #dbe5f2;
+      border-radius: 16px;
+      box-shadow: 0 20px 44px rgba(15, 23, 42, 0.20);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      zoom: 0.9;
+    }
+    .sitemap-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 28px 34px 24px;
+      border-bottom: 1px solid #dbe5f2;
+      background: #ffffff;
+    }
+    .sitemap-modal-title {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 900;
+      color: #132949;
+      letter-spacing: .01em;
+      text-transform: none;
+    }
+    .sitemap-modal-sub {
+      margin: 6px 0 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: #6f819d;
+    }
+    .sitemap-close-btn {
+      border: 1px solid #dbe5f2;
+      background: #f3f7fc;
+      color: #5f738f;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      font-size: 24px;
+      font-weight: 900;
+      cursor: pointer;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+    .sitemap-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: nowrap;
+      margin-top: 8px;
+    }
+    .sm-select {
+      border: 1px solid #ced9e8;
+      background: #fff;
+      color: #0f172a;
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-size: 14px;
+      font-weight: 700;
+      min-width: 200px;
+    }
+    .sm-legend {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+    }
+    .sm-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border: 1px solid #dbe5f2;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      line-height: 1;
+    }
+    .sm-legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      flex: 0 0 auto;
+    }
+    .sitemap-full {
+      display: grid;
+      gap: 0;
+      align-content: start;
+      font-size: 15px;
+      color: #0f172a;
+      font-weight: 800;
+      overflow: auto;
+      background: #ffffff;
+      padding: 14px 34px 24px;
+    }
+    .sm-section-title {
+      margin: 0;
+      padding: 12px 0 8px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #60738f;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .sm-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: nowrap;
+      min-width: 100%;
+      padding: 18px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .sm-main {
+      min-width: 150px;
+      font-weight: 900;
+      color: #0f2343;
+      font-size: 20px;
+    }
+    .sm-chain {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+    }
+    .sm-arrow {
+      color: #8da1bd;
+      font-weight: 900;
+      font-size: 14px;
+    }
+    .sm-link-wrap {
+      display: inline-grid;
+      justify-items: center;
+      align-items: center;
+      gap: 2px;
+      min-width: 22px;
+    }
+    .sm-arrow.broken {
+      color: #dc2626;
+    }
+    .sm-chip {
+      border: 1px solid #d2ddeb;
+      border-radius: 14px;
+      padding: 8px 12px;
+      background: #f8fbff;
+      font-size: 14px;
+      font-weight: 800;
+      color: #3b5b80;
+      line-height: 1.2;
+      white-space: nowrap;
+      word-break: keep-all;
+    }
+    .sm-chip.match {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18) inset;
+    }
+    .sm-chip.system-colored {
+      background: var(--sys-bg, #f8fbff);
+      border-color: var(--sys-border, #d2ddeb);
+      color: var(--sys-text, #1f2937);
+    }
+    .sm-chip.no-system {
+      background: #e5e7eb;
+      border-color: #cbd5e1;
+      color: #6b7280;
+    }
+    .sm-chip.dim {
+      opacity: 0.14;
+      filter: grayscale(0.2);
+    }
+    .sm-link-reason {
+      border: 1px dashed #fda4af;
+      background: #fff1f2;
+      color: #9f1239;
+      border-radius: 10px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+      max-width: 220px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sm-shared-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      border: 1px dashed #f97316;
+      border-radius: 10px;
+      padding: 4px 8px;
+      background: #fff7ed;
+    }
+    .sm-arrow.dim,
+    .sm-main.dim {
+      opacity: 0.14;
+    }
+    .preview img {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #fff;
+    }
+    .note-card {
+      display: block;
+    }
+    .flow-info-card {
+      display: none;
+    }
+    .flow-info-card.open {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      margin-top: 4px;
+    }
+    .section-divider {
+      display: none;
+    }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .mini-label {
+      margin: 0 0 4px;
+      font-size: 10px;
+      color: #60738f;
+      font-weight: 900;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .mini-input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      padding: 10px 12px;
+      font-size: 12px;
+      outline: none;
+      background: #fff;
+    }
+    .mini-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px #dbeafe;
+    }
+    .preview-empty {
+      margin: 0;
+      padding: 8px;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.35;
+    }
+    .note-input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      height: 42px;
+      outline: none;
+      background: #fff;
+    }
+    .note-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px #dbeafe;
+    }
+
+    @media (max-width: 1000px) {
+      .board-track {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+      .sitemap-fab {
+        left: 10px;
+        top: 10px;
+        width: 40px;
+        height: 40px;
+        font-size: 10px;
+      }
+      .data-io {
+        left: 10px;
+        bottom: 10px;
+      }
+      .data-io-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 14px;
+      }
+      .flow-panel {
+        width: 220px;
+        min-width: 220px;
+      }
+      .step-btn { font-size: 14px; }
+      .editor-panel {
+        width: auto;
+        min-width: 560px;
+        max-width: 980px;
+      }
+      .preview {
+        height: 100%;
+        min-height: 240px;
+      }
+      .sitemap-modal-inner {
+        width: min(100vw - 8px, 1200px);
+        height: calc(100vh - 8px);
+      }
+      .sitemap-modal-head {
+        padding: 18px 18px 14px;
+      }
+      .sitemap-modal-title { font-size: 22px; }
+      .sitemap-modal-sub { font-size: 14px; }
+      .sm-select {
+        min-width: 180px;
+        font-size: 14px;
+      }
+      .sitemap-full {
+        padding: 10px 18px 16px;
+      }
+      .sm-main {
+        min-width: 118px;
+        font-size: 18px;
+      }
+      .sm-chip {
+        font-size: 13px;
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button id="sitemapOpenBtn" class="sitemap-fab" type="button" title="사이트맵 보기">MAP</button>
+  <div class="data-io">
+    <button id="dataExportBtn" class="data-io-btn export" type="button" title="데이터 내보내기" aria-label="데이터 내보내기">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 15v2a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4v-2"></path>
+        <path d="M12 3v12"></path>
+        <path d="M7.5 10.5 12 15l4.5-4.5"></path>
+      </svg>
+    </button>
+    <button id="dataImportBtn" class="data-io-btn import" type="button" title="데이터 가져오기" aria-label="데이터 가져오기">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 15v2a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4v-2"></path>
+        <path d="M12 15V3"></path>
+        <path d="M7.5 7.5 12 3l4.5 4.5"></path>
+      </svg>
+    </button>
+    <input id="dataImportInput" class="data-io-input" type="file" accept="application/json,.json" />
+  </div>
+  <div class="board" id="board">
+    <div class="board-track" id="boardTrack">
+      <section class="flow-panel" id="mainPanel">
+        <div class="panel-head">
+          <h2 class="title">PROJECT FLOW</h2>
+          <button id="editModeBtn" class="mode-btn" type="button">편집모드</button>
+        </div>
+        <p class="project-title">프로젝트</p>
+        <div id="mainFlow"></div>
+        <div id="mainCommonSection" class="common-section"></div>
+      </section>
+      <div id="drillColumns"></div>
+      <aside id="editorPanel" class="editor-panel" aria-hidden="true">
+        <div class="editor-head">
+          <div class="editor-head-info">
+            <h3 id="editorTitle" class="editor-title">STEP DETAIL</h3>
+            <p class="editor-sub">이미지와 메모는 자동 저장됩니다.</p>
+          </div>
+          <div class="editor-head-path">
+            <p class="label">SYSTEM PATH</p>
+            <div class="path-wrap">
+              <input id="editorPathInput" class="path-input" type="text" placeholder="예: finance/billing/request" />
+            </div>
+          </div>
+          <button id="editorClose" class="editor-close" type="button">×</button>
+        </div>
+        <div class="editor-body">
+          <div class="editor-card note-card">
+            <p class="label">STEP NOTE</p>
+            <input id="editorNoteInput" class="note-input" type="text" placeholder="해당 단계에 대한 설명을 입력하세요..." />
+          </div>
+          <div class="editor-card image-card">
+            <div class="label-row">
+              <p class="label">PAGE IMAGE</p>
+              <span id="editorFileStatus" class="file-status">저장된 이미지 0장</span>
+            </div>
+            <div class="preview" id="editorPreview">
+              <p class="preview-empty">이미지가 없습니다.</p>
+            </div>
+            <div class="image-nav">
+              <button id="editorPrevImage" class="nav-btn" type="button">이전 페이지</button>
+              <span id="editorPageInfo" class="page-info">0 / 0</span>
+              <button id="editorNextImage" class="nav-btn" type="button">다음 페이지</button>
+            </div>
+            <div class="uploader">
+              <label for="editorImageInput" class="file-btn">이미지 업로드</label>
+              <input id="editorImageInput" class="file-input-hidden" type="file" accept="image/*" multiple />
+              <button id="editorClearImage" class="clear-btn" type="button">삭제</button>
+            </div>
+            <div class="image-note-field">
+              <p class="label">IMAGE NOTE</p>
+              <input id="editorImageNoteInput" class="note-input" type="text" placeholder="현재 이미지에 대한 설명을 입력하세요..." />
+            </div>
+          </div>
+          <div class="section-divider"></div>
+          <div id="flowInfoCard" class="editor-card flow-info-card">
+            <p class="label">FLOW INFO</p>
+            <div class="mini-grid">
+              <div>
+                <p class="mini-label">담당팀</p>
+                <input id="editorTeamInput" class="mini-input" type="text" placeholder="예: 사업관리팀, 현업팀" />
+              </div>
+              <div>
+                <p class="mini-label">해당 시스템</p>
+                <input id="editorSystemInput" class="mini-input" type="text" placeholder="예: ERP, CRM" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <div id="imageModal" class="image-modal" aria-hidden="true">
+    <div class="image-modal-inner">
+      <button id="imageModalClose" class="image-modal-close" type="button">×</button>
+      <img id="imageModalImg" alt="확대 이미지" />
+      <div id="imageModalNote" class="image-modal-note"></div>
+      <div class="image-modal-nav">
+        <button id="imageModalPrev" class="image-modal-btn" type="button">이전</button>
+        <span id="imageModalPage" class="image-modal-page">0 / 0</span>
+        <button id="imageModalNext" class="image-modal-btn" type="button">다음</button>
+      </div>
+    </div>
+  </div>
+  <div id="sitemapModal" class="sitemap-modal" aria-hidden="true">
+    <div class="sitemap-modal-inner">
+      <div class="sitemap-modal-head">
+        <div>
+          <h3 class="sitemap-modal-title">Process Map</h3>
+          <p class="sitemap-modal-sub">전체 비즈니스 프로세스 현황입니다.</p>
+          <div id="sitemapLegend" class="sm-legend"></div>
+        </div>
+        <div class="sitemap-toolbar">
+          <select id="sitemapTeamSelect" class="sm-select">
+            <option value="">전체 팀 필터</option>
+          </select>
+          <select id="sitemapSystemSelect" class="sm-select">
+            <option value="">전체 시스템 필터</option>
+          </select>
+          <button id="sitemapCloseBtn" class="sitemap-close-btn" type="button">×</button>
+        </div>
+      </div>
+      <div id="sitemapFullContent" class="sitemap-full"></div>
+    </div>
+  </div>
+
+  <script>
+    const MAIN_STEPS = [
+      '사전조사',
+      '입찰',
+      '계약',
+      '계획',
+      '기성',
+      '외주',
+      '실행률/손익분석'
+    ];
+
+    const SUB_FLOW = {
+      '사전조사': ['사전조사'],
+      '입찰': ['입찰공고', '참여검토', '입찰진행', '입찰결과'],
+      '계약': ['계약', '계약변경', '차수계약'],
+      '계획': ['과업수행계획 작성', '실행계획 작성'],
+      '기성': ['견적검토', '기성청구', '기성검토', '전표작성', '수금'],
+      '외주': ['외주견적검토', '외주계약', '외주기성청구', '외주기성검토', '전표작성', '출금'],
+      '실행률/손익분석': ['실행률 분석', '손익 분석', '피드백 반영']
+    };
+
+    const DRILL_FLOW = {
+      '입찰공고': ['공고 확인', '요건 분석', '참여 여부 결정'],
+      '참여검토': ['리스크 검토', '인력 검토', '원가 검토'],
+      '입찰진행': ['서류 작성', '내부 승인', '제출'],
+      '계약': ['계약서 검토', '법무 협의', '체결'],
+      '기성청구': ['기성내역 등록', '증빙 첨부', '청구 상신'],
+      '외주계약': ['외주업체 선정', '단가 협의', '외주계약관리'],
+      '외주기성청구': ['외주기성청구내역등록', '검토 요청', '승인 완료'],
+      '전표작성': ['전표 생성', '회계 검토', '전기 처리'],
+      '수금': ['수금 확인', '시스템 반영', '마감']
+    };
+    let COMMON_ITEMS = ['지출등록'];
+    let COMMON_SUB_FLOW = {
+      '지출등록': ['지출요청', '지출검토', '지출등록']
+    };
+
+    const mainFlowEl = document.getElementById('mainFlow');
+    const mainPanelEl = document.getElementById('mainPanel');
+    const mainCommonSectionEl = document.getElementById('mainCommonSection');
+    const drillColumnsEl = document.getElementById('drillColumns');
+    const editorPanelEl = document.getElementById('editorPanel');
+    const editorTitleEl = document.getElementById('editorTitle');
+    const editorCloseEl = document.getElementById('editorClose');
+    const editorPathInputEl = document.getElementById('editorPathInput');
+    const editorImageInputEl = document.getElementById('editorImageInput');
+    const editorFileStatusEl = document.getElementById('editorFileStatus');
+    const editorClearImageEl = document.getElementById('editorClearImage');
+    const editorPreviewEl = document.getElementById('editorPreview');
+    const editorPrevImageEl = document.getElementById('editorPrevImage');
+    const editorNextImageEl = document.getElementById('editorNextImage');
+    const editorPageInfoEl = document.getElementById('editorPageInfo');
+    const editorNoteInputEl = document.getElementById('editorNoteInput');
+    const editorImageNoteInputEl = document.getElementById('editorImageNoteInput');
+    const flowInfoCardEl = document.getElementById('flowInfoCard');
+    const editorTeamInputEl = document.getElementById('editorTeamInput');
+    const editorSystemInputEl = document.getElementById('editorSystemInput');
+    const editModeBtnEl = document.getElementById('editModeBtn');
+    const imageModalEl = document.getElementById('imageModal');
+    const imageModalImgEl = document.getElementById('imageModalImg');
+    const imageModalCloseEl = document.getElementById('imageModalClose');
+    const imageModalPrevEl = document.getElementById('imageModalPrev');
+    const imageModalNextEl = document.getElementById('imageModalNext');
+    const imageModalPageEl = document.getElementById('imageModalPage');
+    const imageModalNoteEl = document.getElementById('imageModalNote');
+    const sitemapOpenBtnEl = document.getElementById('sitemapOpenBtn');
+    const dataExportBtnEl = document.getElementById('dataExportBtn');
+    const dataImportBtnEl = document.getElementById('dataImportBtn');
+    const dataImportInputEl = document.getElementById('dataImportInput');
+    const sitemapModalEl = document.getElementById('sitemapModal');
+    const sitemapCloseBtnEl = document.getElementById('sitemapCloseBtn');
+    const sitemapTeamSelectEl = document.getElementById('sitemapTeamSelect');
+    const sitemapSystemSelectEl = document.getElementById('sitemapSystemSelect');
+    const sitemapFullContentEl = document.getElementById('sitemapFullContent');
+    const sitemapLegendEl = document.getElementById('sitemapLegend');
+
+    // 선택 체인: [메인선택, 1차선택, 2차선택, ...]
+    let selectedChain = [];
+    let editMode = false;
+    let editingKey = null;
+    let currentImageIndex = 0;
+    let modalImageIndex = 0;
+    let sitemapFilterTeam = '';
+    let sitemapFilterSystem = '';
+    const STEP_META_KEY = 'flow_step_meta_v1';
+    const FLOW_MODEL_KEY = 'flow_model_v1';
+    const IDB_DB_NAME = 'flow_drill_data_db_v1';
+    const IDB_STORE_NAME = 'kv';
+    let stepMeta = {};
+    let subFlowLinks = {};
+    const BOOTSTRAP_MARKER_KEY = 'flow_bootstrap_marker_v1';
+    const BOOTSTRAP_MARKER_VALUE = 'flow-data-2026-03-16';
+    let idbOpenPromise = null;
+
+    function openIdb() {
+      if (!('indexedDB' in window)) return Promise.resolve(null);
+      if (idbOpenPromise) return idbOpenPromise;
+      idbOpenPromise = new Promise((resolve) => {
+        try {
+          const req = indexedDB.open(IDB_DB_NAME, 1);
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
+              db.createObjectStore(IDB_STORE_NAME, { keyPath: 'k' });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+      return idbOpenPromise;
+    }
+
+    async function idbSet(key, value) {
+      const db = await openIdb();
+      if (!db) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
+          tx.objectStore(IDB_STORE_NAME).put({ k: key, v: value });
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    }
+
+    async function idbGet(key) {
+      const db = await openIdb();
+      if (!db) return null;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(IDB_STORE_NAME, 'readonly');
+          const req = tx.objectStore(IDB_STORE_NAME).get(key);
+          req.onsuccess = () => resolve(req.result ? req.result.v : null);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }
+
+    function persistMarker() {
+      try { localStorage.setItem(BOOTSTRAP_MARKER_KEY, BOOTSTRAP_MARKER_VALUE); } catch (e) {}
+      idbSet(BOOTSTRAP_MARKER_KEY, BOOTSTRAP_MARKER_VALUE);
+    }
+
+    function loadStepMeta() {
+      try {
+        const raw = localStorage.getItem(STEP_META_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return;
+        stepMeta = parsed;
+      } catch (e) {
+        stepMeta = {};
+      }
+    }
+
+    function saveStepMeta() {
+      try {
+        localStorage.setItem(STEP_META_KEY, JSON.stringify(stepMeta));
+      } catch (e) {
+        // localStorage quota exceeded; IndexedDB fallback handles persistence
+      }
+      idbSet(STEP_META_KEY, stepMeta);
+    }
+    function isSecondFlowKey(key) {
+      return typeof key === 'string' && key.startsWith('0|');
+    }
+    function ensureMeta(key) {
+      stepMeta[key] = stepMeta[key] || { image: '', images: [], imageNotes: [], note: '', team: '', system: '', path: '' };
+      if (typeof stepMeta[key].image !== 'string') stepMeta[key].image = '';
+      if (!Array.isArray(stepMeta[key].images)) {
+        stepMeta[key].images = stepMeta[key].image ? [stepMeta[key].image] : [];
+      }
+      if (!Array.isArray(stepMeta[key].imageNotes)) {
+        stepMeta[key].imageNotes = [];
+      }
+      stepMeta[key].images = stepMeta[key].images.filter((v) => typeof v === 'string' && v);
+      stepMeta[key].imageNotes = stepMeta[key].imageNotes.map((v) => String(v || ''));
+      if (!stepMeta[key].image && stepMeta[key].images.length) {
+        stepMeta[key].image = stepMeta[key].images[0];
+      }
+      if (stepMeta[key].image && !stepMeta[key].images.length) {
+        stepMeta[key].images = [stepMeta[key].image];
+      }
+      if (stepMeta[key].imageNotes.length < stepMeta[key].images.length) {
+        while (stepMeta[key].imageNotes.length < stepMeta[key].images.length) {
+          stepMeta[key].imageNotes.push('');
+        }
+      } else if (stepMeta[key].imageNotes.length > stepMeta[key].images.length) {
+        stepMeta[key].imageNotes = stepMeta[key].imageNotes.slice(0, stepMeta[key].images.length);
+      }
+      stepMeta[key].image = stepMeta[key].images[0] || '';
+      if (typeof stepMeta[key].note !== 'string') stepMeta[key].note = '';
+      if (typeof stepMeta[key].team !== 'string') stepMeta[key].team = '';
+      if (typeof stepMeta[key].system !== 'string') stepMeta[key].system = '';
+      if (typeof stepMeta[key].path !== 'string') stepMeta[key].path = '';
+      return stepMeta[key];
+    }
+    function saveFlowModel() {
+      const payload = {
+        mainSteps: MAIN_STEPS,
+        subFlow: SUB_FLOW,
+        drillFlow: DRILL_FLOW,
+        subFlowLinks,
+        commonItems: COMMON_ITEMS,
+        commonSubFlow: COMMON_SUB_FLOW
+      };
+      try {
+        localStorage.setItem(FLOW_MODEL_KEY, JSON.stringify(payload));
+      } catch (e) {
+        // localStorage quota exceeded; IndexedDB fallback handles persistence
+      }
+      idbSet(FLOW_MODEL_KEY, payload);
+    }
+    function applyImportedData(flowModel, importedMeta, persist = true) {
+      applyFlowModelObject(flowModel);
+      stepMeta = (importedMeta && typeof importedMeta === 'object') ? importedMeta : {};
+      if (!persist) return true;
+      try { localStorage.setItem(FLOW_MODEL_KEY, JSON.stringify(flowModel)); } catch (e) {}
+      try { localStorage.setItem(STEP_META_KEY, JSON.stringify(stepMeta)); } catch (e) {}
+      idbSet(FLOW_MODEL_KEY, flowModel);
+      idbSet(STEP_META_KEY, stepMeta);
+      return true;
+    }
+    function exportAllData() {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        flowModel: {
+          mainSteps: MAIN_STEPS,
+          subFlow: SUB_FLOW,
+          drillFlow: DRILL_FLOW,
+          subFlowLinks,
+          commonItems: COMMON_ITEMS,
+          commonSubFlow: COMMON_SUB_FLOW
+        },
+        stepMeta
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const day = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `flow-data-${day}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+    function applyFlowModelObject(parsed) {
+      if (!parsed || typeof parsed !== 'object') return;
+      if (Array.isArray(parsed.mainSteps)) {
+        MAIN_STEPS.splice(0, MAIN_STEPS.length, ...parsed.mainSteps.map(v => String(v)));
+      }
+      if (parsed.subFlow && typeof parsed.subFlow === 'object') {
+        Object.keys(SUB_FLOW).forEach(k => delete SUB_FLOW[k]);
+        Object.entries(parsed.subFlow).forEach(([k, arr]) => {
+          if (Array.isArray(arr)) SUB_FLOW[k] = arr.map(v => String(v));
+        });
+      }
+      if (parsed.drillFlow && typeof parsed.drillFlow === 'object') {
+        Object.keys(DRILL_FLOW).forEach(k => delete DRILL_FLOW[k]);
+        Object.entries(parsed.drillFlow).forEach(([k, arr]) => {
+          if (Array.isArray(arr)) DRILL_FLOW[k] = arr.map(v => String(v));
+        });
+      }
+      if (parsed.subFlowLinks && typeof parsed.subFlowLinks === 'object') {
+        subFlowLinks = {};
+        Object.entries(parsed.subFlowLinks).forEach(([k, v]) => {
+          if (v && typeof v === 'object' && typeof v.reason === 'string') {
+            subFlowLinks[k] = { reason: v.reason };
+          }
+        });
+      } else {
+        subFlowLinks = {};
+      }
+      if (Array.isArray(parsed.commonItems)) {
+        COMMON_ITEMS = parsed.commonItems.map(v => String(v)).filter(Boolean);
+      }
+      if (parsed.commonSubFlow && typeof parsed.commonSubFlow === 'object') {
+        COMMON_SUB_FLOW = {};
+        Object.entries(parsed.commonSubFlow).forEach(([k, arr]) => {
+          if (Array.isArray(arr)) COMMON_SUB_FLOW[k] = arr.map(v => String(v));
+        });
+      }
+    }
+
+    function importAllData(rawText) {
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        alert('JSON 파일 형식이 올바르지 않습니다.');
+        return;
+      }
+      if (!parsed || typeof parsed !== 'object') {
+        alert('가져올 데이터 형식이 아닙니다.');
+        return;
+      }
+      const flowModel = (parsed.flowModel && typeof parsed.flowModel === 'object')
+        ? parsed.flowModel
+        : ((Array.isArray(parsed.mainSteps) || (parsed.subFlow && typeof parsed.subFlow === 'object'))
+            ? parsed
+            : null);
+      const importedMeta = (parsed.stepMeta && typeof parsed.stepMeta === 'object') ? parsed.stepMeta : {};
+      if (!flowModel || typeof flowModel !== 'object') {
+        alert('flowModel 데이터가 없습니다.');
+        return;
+      }
+
+      applyImportedData(flowModel, importedMeta, true);
+      persistMarker();
+      selectedChain = [];
+      closeEditor();
+      renderAll();
+      alert('데이터를 가져왔습니다.');
+    }
+    function loadFlowModel() {
+      try {
+        const raw = localStorage.getItem(FLOW_MODEL_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        applyFlowModelObject(parsed);
+      } catch (e) {
+        // ignore malformed saved model
+      }
+    }
+
+    async function loadFromIdbFallback() {
+      const hasLocalFlow = !!localStorage.getItem(FLOW_MODEL_KEY);
+      const hasLocalMeta = !!localStorage.getItem(STEP_META_KEY);
+      if (!hasLocalFlow) {
+        const flow = await idbGet(FLOW_MODEL_KEY);
+        if (flow && typeof flow === 'object') applyFlowModelObject(flow);
+      }
+      if (!hasLocalMeta) {
+        const meta = await idbGet(STEP_META_KEY);
+        if (meta && typeof meta === 'object') stepMeta = meta;
+      }
+      if (localStorage.getItem(BOOTSTRAP_MARKER_KEY) !== BOOTSTRAP_MARKER_VALUE) {
+        const marker = await idbGet(BOOTSTRAP_MARKER_KEY);
+        if (marker === BOOTSTRAP_MARKER_VALUE) {
+          try { localStorage.setItem(BOOTSTRAP_MARKER_KEY, BOOTSTRAP_MARKER_VALUE); } catch (e) {}
+        }
+      }
+    }
+
+    async function bootstrapDefaultJsonIfEmpty() {
+      let hasMarker = localStorage.getItem(BOOTSTRAP_MARKER_KEY) === BOOTSTRAP_MARKER_VALUE;
+      if (!hasMarker) {
+        const marker = await idbGet(BOOTSTRAP_MARKER_KEY);
+        hasMarker = marker === BOOTSTRAP_MARKER_VALUE;
+      }
+      if (hasMarker) return false;
+      const candidates = ['../flow-data-2026-03-16.json', './flow-data-2026-03-16.json'];
+      for (const path of candidates) {
+        try {
+          let parsed = null;
+          try {
+            const res = await fetch(path, { cache: 'no-store' });
+            if (res.ok) parsed = await res.json();
+          } catch (e) {
+            // fall through to XHR
+          }
+          if (!parsed) {
+            parsed = await new Promise((resolve) => {
+              try {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', path, true);
+                xhr.onreadystatechange = () => {
+                  if (xhr.readyState !== 4) return;
+                  if (xhr.status === 200 || (xhr.status === 0 && xhr.responseText)) {
+                    try { resolve(JSON.parse(xhr.responseText)); } catch (e) { resolve(null); }
+                  } else {
+                    resolve(null);
+                  }
+                };
+                xhr.send();
+              } catch (e) {
+                resolve(null);
+              }
+            });
+          }
+          if (!parsed) continue;
+          const flowModel = (parsed.flowModel && typeof parsed.flowModel === 'object')
+            ? parsed.flowModel
+            : ((Array.isArray(parsed.mainSteps) || (parsed.subFlow && typeof parsed.subFlow === 'object'))
+                ? parsed
+                : null);
+          const importedMeta = (parsed.stepMeta && typeof parsed.stepMeta === 'object') ? parsed.stepMeta : {};
+          if (!flowModel) continue;
+          applyImportedData(flowModel, importedMeta, true);
+          persistMarker();
+          return true;
+        } catch (e) {
+          // ignore and try next candidate
+        }
+      }
+      return false;
+    }
+
+    function renderEditorPreview(label) {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      const images = info.images || [];
+      if (currentImageIndex >= images.length) {
+        currentImageIndex = Math.max(0, images.length - 1);
+      }
+      const imageSrc = images[currentImageIndex] || '';
+      editorPreviewEl.innerHTML = '';
+      if (!imageSrc) {
+        const empty = document.createElement('p');
+        empty.className = 'preview-empty';
+        empty.textContent = '이미지가 없습니다.';
+        editorPreviewEl.appendChild(empty);
+      } else {
+        const img = document.createElement('img');
+        img.src = imageSrc;
+        img.alt = `${label} 이미지`;
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', () => openImageModal(currentImageIndex, `${label} 확대 이미지`));
+        editorPreviewEl.appendChild(img);
+      }
+      editorPageInfoEl.textContent = `${images.length ? (currentImageIndex + 1) : 0} / ${images.length}`;
+      editorFileStatusEl.textContent = images.length ? `저장된 이미지 ${images.length}장` : '저장된 이미지 0장';
+      editorPrevImageEl.disabled = images.length <= 1 || currentImageIndex <= 0;
+      editorNextImageEl.disabled = images.length <= 1 || currentImageIndex >= images.length - 1;
+      const imageNote = images.length ? (info.imageNotes[currentImageIndex] || '') : '';
+      editorImageNoteInputEl.value = imageNote;
+      editorImageNoteInputEl.disabled = !images.length;
+    }
+    function updateImageModalView(altText) {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      const images = info.images || [];
+      if (!images.length) return;
+      if (modalImageIndex < 0) modalImageIndex = 0;
+      if (modalImageIndex > images.length - 1) modalImageIndex = images.length - 1;
+      imageModalImgEl.src = images[modalImageIndex];
+      imageModalImgEl.alt = altText || '확대 이미지';
+      imageModalPageEl.textContent = `${modalImageIndex + 1} / ${images.length}`;
+      imageModalPrevEl.disabled = modalImageIndex <= 0;
+      imageModalNextEl.disabled = modalImageIndex >= images.length - 1;
+      const note = (info.imageNotes && info.imageNotes[modalImageIndex]) ? String(info.imageNotes[modalImageIndex]).trim() : '';
+      if (note) {
+        imageModalNoteEl.textContent = note;
+        imageModalNoteEl.classList.add('show');
+      } else {
+        imageModalNoteEl.textContent = '';
+        imageModalNoteEl.classList.remove('show');
+      }
+    }
+    function openImageModal(index, altText) {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      if (!info.images.length) return;
+      modalImageIndex = Number.isInteger(index) ? index : 0;
+      updateImageModalView(altText);
+      imageModalEl.classList.add('open');
+      imageModalEl.setAttribute('aria-hidden', 'false');
+    }
+    function closeImageModal() {
+      imageModalEl.classList.remove('open');
+      imageModalEl.setAttribute('aria-hidden', 'true');
+      imageModalImgEl.src = '';
+      imageModalPageEl.textContent = '0 / 0';
+      imageModalNoteEl.textContent = '';
+      imageModalNoteEl.classList.remove('show');
+    }
+
+    function openEditor(stepKey, stepLabel) {
+      editingKey = stepKey;
+      const info = ensureMeta(stepKey);
+      editorTitleEl.textContent = `${stepLabel} DETAIL`;
+      editorPathInputEl.value = info.path || '';
+      editorNoteInputEl.value = info.note || '';
+      editorTeamInputEl.value = info.team || '';
+      editorSystemInputEl.value = info.system || '';
+      flowInfoCardEl.classList.toggle('open', isSecondFlowKey(stepKey));
+      editorImageInputEl.value = '';
+      currentImageIndex = 0;
+      renderEditorPreview(stepLabel);
+      editorPanelEl.classList.add('open');
+      editorPanelEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeEditor() {
+      editorPanelEl.classList.remove('open');
+      editorPanelEl.setAttribute('aria-hidden', 'true');
+    }
+    function ensureCommonSubFlowEntry(item) {
+      const key = String(item || '').trim();
+      if (!key) return [];
+      if (!Array.isArray(COMMON_SUB_FLOW[key])) {
+        COMMON_SUB_FLOW[key] = [];
+      }
+      return COMMON_SUB_FLOW[key];
+    }
+
+    function getNextFlow(level, step) {
+      if (!step) return [];
+      if (level === 0) {
+        if (String(step).startsWith('common::')) {
+          const name = String(step).slice('common::'.length);
+          return ensureCommonSubFlowEntry(name);
+        }
+        return SUB_FLOW[step] || [];
+      }
+      return DRILL_FLOW[step] || [];
+    }
+    function getPivotLabel(step) {
+      if (String(step).startsWith('common::')) return String(step).slice('common::'.length);
+      return step;
+    }
+    function getSecondFlowMeta(mainStep, step) {
+      return stepMeta[`0|${mainStep}|${step}`] || {};
+    }
+    function hashSystemName(text) {
+      let hash = 0;
+      const value = String(text || '');
+      for (let i = 0; i < value.length; i += 1) {
+        hash = ((hash << 5) - hash) + value.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+    function getRandomLikeColorBySystem(systemName) {
+      const h = hashSystemName(systemName) % 360;
+      const s = 62 + (hashSystemName(`${systemName}-s`) % 14); // 62~75
+      const lBg = 90 + (hashSystemName(`${systemName}-l`) % 6); // 90~95
+      const lBorder = 66 + (hashSystemName(`${systemName}-b`) % 10); // 66~75
+      return {
+        bg: `hsl(${h} ${s}% ${lBg}%)`,
+        border: `hsl(${h} ${Math.max(44, s - 14)}% ${lBorder}%)`,
+        text: `hsl(${h} 58% 26%)`
+      };
+    }
+    function applyChipSystemColor(chipEl, info) {
+      const systems = parseMultiValues(info.system);
+      if (!systems.length) {
+        chipEl.classList.add('no-system');
+        return;
+      }
+      const mainSystem = systems[0];
+      const c = getRandomLikeColorBySystem(mainSystem);
+      chipEl.classList.add('system-colored');
+      chipEl.style.setProperty('--sys-bg', c.bg);
+      chipEl.style.setProperty('--sys-border', c.border);
+      chipEl.style.setProperty('--sys-text', c.text);
+    }
+    function parseMultiValues(text) {
+      return String(text || '')
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean);
+    }
+    function isMetaMatchedByFilter(info) {
+      const teams = parseMultiValues(info.team);
+      const systems = parseMultiValues(info.system);
+      const hasAnyMeta = teams.length > 0 || systems.length > 0;
+      if (!sitemapFilterTeam && !sitemapFilterSystem) return true;
+      if (!hasAnyMeta) return false;
+      const teamMatch = !sitemapFilterTeam || teams.includes(sitemapFilterTeam);
+      const sysMatch = !sitemapFilterSystem || systems.includes(sitemapFilterSystem);
+      return teamMatch && sysMatch;
+    }
+    const SHARED_SEGMENT = ['전표작성', '검토', '출금'];
+    function findSharedSegmentStart(list) {
+      for (let i = 0; i <= list.length - SHARED_SEGMENT.length; i += 1) {
+        const ok = SHARED_SEGMENT.every((v, k) => String(list[i + k] || '').trim() === v);
+        if (ok) return i;
+      }
+      return -1;
+    }
+    function subFlowLinkKey(mainStep, fromStep, toStep) {
+      return `${mainStep}||${fromStep}>>${toStep}`;
+    }
+    function getSubFlowLinkInfo(mainStep, fromStep, toStep) {
+      return subFlowLinks[subFlowLinkKey(mainStep, fromStep, toStep)] || { reason: '' };
+    }
+    function setSubFlowLinkReason(mainStep, fromStep, toStep, reason) {
+      const key = subFlowLinkKey(mainStep, fromStep, toStep);
+      const text = String(reason || '').trim();
+      if (!text) {
+        delete subFlowLinks[key];
+      } else {
+        subFlowLinks[key] = { reason: text };
+      }
+    }
+    function remapSubFlowLinksOnRename(mainStep, oldStep, newStep) {
+      const nextLinks = {};
+      Object.entries(subFlowLinks).forEach(([k, v]) => {
+        if (!k.startsWith(`${mainStep}||`)) {
+          nextLinks[k] = v;
+          return;
+        }
+        const raw = k.slice(`${mainStep}||`.length);
+        const [fromRaw, toRaw] = raw.split('>>');
+        const from = fromRaw === oldStep ? newStep : fromRaw;
+        const to = toRaw === oldStep ? newStep : toRaw;
+        nextLinks[subFlowLinkKey(mainStep, from, to)] = v;
+      });
+      subFlowLinks = nextLinks;
+    }
+    function syncSubFlowLinks(mainStep) {
+      const list = SUB_FLOW[mainStep] || [];
+      const valid = new Set();
+      for (let i = 0; i < list.length - 1; i += 1) {
+        valid.add(subFlowLinkKey(mainStep, list[i], list[i + 1]));
+      }
+      Object.keys(subFlowLinks).forEach((k) => {
+        if (k.startsWith(`${mainStep}||`) && !valid.has(k)) delete subFlowLinks[k];
+      });
+    }
+    function refreshSitemapFilterOptions() {
+      const teamSet = new Set();
+      const systemSet = new Set();
+      MAIN_STEPS.forEach((mainStep) => {
+        const sub = SUB_FLOW[mainStep] || [];
+        sub.forEach((s) => {
+          const info = getSecondFlowMeta(mainStep, s);
+          parseMultiValues(info.team).forEach((v) => teamSet.add(v));
+          parseMultiValues(info.system).forEach((v) => systemSet.add(v));
+        });
+      });
+
+      const prevTeam = sitemapFilterTeam;
+      const prevSystem = sitemapFilterSystem;
+
+      sitemapTeamSelectEl.innerHTML = '<option value=\"\">전체 팀 필터</option>';
+      Array.from(teamSet).sort((a, b) => a.localeCompare(b, 'ko')).forEach((v) => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        sitemapTeamSelectEl.appendChild(opt);
+      });
+
+      sitemapSystemSelectEl.innerHTML = '<option value=\"\">전체 시스템 필터</option>';
+      Array.from(systemSet).sort((a, b) => a.localeCompare(b, 'ko')).forEach((v) => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        sitemapSystemSelectEl.appendChild(opt);
+      });
+
+      sitemapTeamSelectEl.value = Array.from(teamSet).includes(prevTeam) ? prevTeam : '';
+      sitemapSystemSelectEl.value = Array.from(systemSet).includes(prevSystem) ? prevSystem : '';
+      sitemapFilterTeam = sitemapTeamSelectEl.value;
+      sitemapFilterSystem = sitemapSystemSelectEl.value;
+    }
+    function collectSystemsForLegend() {
+      const set = new Set();
+      MAIN_STEPS.forEach((mainStep) => {
+        (SUB_FLOW[mainStep] || []).forEach((s) => {
+          const info = getSecondFlowMeta(mainStep, s);
+          parseMultiValues(info.system).forEach((sys) => set.add(sys));
+        });
+      });
+      COMMON_ITEMS.forEach((item) => {
+        (COMMON_SUB_FLOW[item] || []).forEach((s) => {
+          const info = getSecondFlowMeta(item, s);
+          parseMultiValues(info.system).forEach((sys) => set.add(sys));
+        });
+      });
+      return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+    }
+    function renderSitemapLegend() {
+      if (!sitemapLegendEl) return;
+      sitemapLegendEl.innerHTML = '';
+      const systems = collectSystemsForLegend();
+
+      const makeItem = (label, bg, border) => {
+        const item = document.createElement('span');
+        item.className = 'sm-legend-item';
+        const swatch = document.createElement('span');
+        swatch.className = 'sm-legend-swatch';
+        swatch.style.background = bg;
+        swatch.style.borderColor = border;
+        const txt = document.createElement('span');
+        txt.textContent = label;
+        item.appendChild(swatch);
+        item.appendChild(txt);
+        sitemapLegendEl.appendChild(item);
+      };
+
+      systems.forEach((sys) => {
+        const c = getRandomLikeColorBySystem(sys);
+        makeItem(sys, c.bg, c.border);
+      });
+      makeItem('시스템 미입력', '#e5e7eb', '#cbd5e1');
+    }
+    function renderSiteMapFull() {
+      sitemapFullContentEl.innerHTML = '';
+      renderSitemapLegend();
+      const hasFilter = Boolean(sitemapFilterTeam || sitemapFilterSystem);
+
+      const projectTitle = document.createElement('p');
+      projectTitle.className = 'sm-section-title';
+      projectTitle.textContent = '프로젝트';
+      sitemapFullContentEl.appendChild(projectTitle);
+
+      MAIN_STEPS.forEach((mainStep) => {
+        const row = document.createElement('div');
+        row.className = 'sm-row';
+
+        const main = document.createElement('div');
+        main.className = 'sm-main';
+        main.textContent = mainStep;
+        row.appendChild(main);
+
+        const sub = SUB_FLOW[mainStep] || [];
+
+        let rowHasMatch = false;
+        if (sub.length > 0) {
+          const chain = document.createElement('div');
+          chain.className = 'sm-chain';
+
+          const sharedStart = findSharedSegmentStart(sub);
+
+          sub.forEach((s, idx) => {
+            if (sharedStart >= 0 && idx > sharedStart && idx < sharedStart + SHARED_SEGMENT.length) {
+              return;
+            }
+            const info = getSecondFlowMeta(mainStep, s);
+            const isMatch = isMetaMatchedByFilter(info);
+            if (isMatch) rowHasMatch = true;
+
+            const chip = document.createElement('span');
+            chip.className = 'sm-chip';
+            chip.textContent = s;
+            chip.title = `담당팀: ${info.team || '-'} / 시스템: ${info.system || '-'}`;
+            applyChipSystemColor(chip, info);
+            if (hasFilter) {
+              chip.classList.add(isMatch ? 'match' : 'dim');
+            }
+            if (sharedStart >= 0 && idx === sharedStart) {
+              const box = document.createElement('span');
+              box.className = 'sm-shared-box';
+              const sharedMatches = SHARED_SEGMENT.map((segName) => {
+                const segInfo = getSecondFlowMeta(mainStep, segName);
+                const segMatch = isMetaMatchedByFilter(segInfo);
+                if (segMatch) rowHasMatch = true;
+                return segMatch;
+              });
+              for (let k = 0; k < SHARED_SEGMENT.length; k += 1) {
+                const segName = SHARED_SEGMENT[k];
+                const segMatch = sharedMatches[k];
+                const segChip = document.createElement('span');
+                segChip.className = 'sm-chip';
+                segChip.textContent = segName;
+                const segInfo = getSecondFlowMeta(mainStep, segName);
+                segChip.title = `담당팀: ${segInfo.team || '-'} / 시스템: ${segInfo.system || '-'}`;
+                applyChipSystemColor(segChip, segInfo);
+                if (hasFilter) {
+                  segChip.classList.add(segMatch ? 'match' : 'dim');
+                }
+                box.appendChild(segChip);
+                if (k < SHARED_SEGMENT.length - 1) {
+                  const inArrow = document.createElement('span');
+                  inArrow.className = 'sm-arrow';
+                  inArrow.textContent = '→';
+                  if (hasFilter && !(sharedMatches[k] || sharedMatches[k + 1])) inArrow.classList.add('dim');
+                  box.appendChild(inArrow);
+                }
+              }
+              chain.appendChild(box);
+              if (sharedStart + SHARED_SEGMENT.length < sub.length) {
+                const outArrow = document.createElement('span');
+                outArrow.className = 'sm-arrow';
+                outArrow.textContent = '→';
+                const nextInfo = getSecondFlowMeta(mainStep, sub[sharedStart + SHARED_SEGMENT.length]);
+                const nextMatch = isMetaMatchedByFilter(nextInfo);
+                if (hasFilter && !(sharedMatches[sharedMatches.length - 1] || nextMatch)) outArrow.classList.add('dim');
+                chain.appendChild(outArrow);
+              }
+            } else {
+              chain.appendChild(chip);
+            }
+
+            if (idx < sub.length - 1) {
+              if (sharedStart >= 0 && idx >= sharedStart && idx < sharedStart + SHARED_SEGMENT.length - 1) {
+                return;
+              }
+              const nextStep = sub[idx + 1];
+              const link = getSubFlowLinkInfo(mainStep, s, nextStep);
+              const linkWrap = document.createElement('span');
+              linkWrap.className = 'sm-link-wrap';
+              if (hasFilter && !isMatch) linkWrap.classList.add('dim');
+              const arrow = document.createElement('span');
+              arrow.className = `sm-arrow${link.reason ? ' broken' : ''}`;
+              arrow.textContent = '→';
+              if (link.reason) {
+                const reason = document.createElement('span');
+                reason.className = 'sm-link-reason';
+                reason.textContent = link.reason;
+                reason.title = link.reason;
+                if (hasFilter && !isMatch) reason.classList.add('dim');
+                linkWrap.appendChild(reason);
+              }
+              if (hasFilter && !isMatch) arrow.classList.add('dim');
+              linkWrap.appendChild(arrow);
+              chain.appendChild(linkWrap);
+            }
+          });
+
+          if (hasFilter && !rowHasMatch) {
+            main.classList.add('dim');
+          }
+          row.appendChild(chain);
+        }
+
+        sitemapFullContentEl.appendChild(row);
+      });
+
+      const commonTitle = document.createElement('p');
+      commonTitle.className = 'sm-section-title';
+      commonTitle.textContent = '공통';
+      sitemapFullContentEl.appendChild(commonTitle);
+
+      // 공통사항은 Process Map 맨 아래 별도 섹션으로 표시
+      if (COMMON_ITEMS.length) {
+        COMMON_ITEMS.forEach((item) => {
+          const commonRow = document.createElement('div');
+          commonRow.className = 'sm-row';
+          const commonMain = document.createElement('div');
+          commonMain.className = 'sm-main';
+          commonMain.textContent = item;
+          commonRow.appendChild(commonMain);
+
+          const commonChain = document.createElement('div');
+          commonChain.className = 'sm-chain';
+          const sub = COMMON_SUB_FLOW[item] || [];
+          let commonHasMatch = false;
+          const isCommonStepMatch = (stepName) => {
+            const info = getSecondFlowMeta(item, stepName);
+            return isMetaMatchedByFilter(info);
+          };
+          if (sub.length) {
+            const sharedStart = findSharedSegmentStart(sub);
+
+            const appendArrow = (dim = false) => {
+              const arrow = document.createElement('span');
+              arrow.className = 'sm-arrow';
+              arrow.textContent = '→';
+              if (hasFilter && dim) arrow.classList.add('dim');
+              commonChain.appendChild(arrow);
+            };
+            const appendChip = (label) => {
+              const info = getSecondFlowMeta(item, label);
+              const isMatch = isCommonStepMatch(label);
+              if (isMatch) commonHasMatch = true;
+              const subChip = document.createElement('span');
+              subChip.className = 'sm-chip';
+              subChip.textContent = label;
+              subChip.title = `담당팀: ${info.team || '-'} / 시스템: ${info.system || '-'}`;
+              applyChipSystemColor(subChip, info);
+              if (hasFilter) subChip.classList.add(isMatch ? 'match' : 'dim');
+              commonChain.appendChild(subChip);
+            };
+
+            if (sharedStart < 0) {
+              sub.forEach((s, idx) => {
+                appendChip(s);
+                if (idx < sub.length - 1) {
+                  const dimArrow = hasFilter && !(isCommonStepMatch(s) || isCommonStepMatch(sub[idx + 1]));
+                  appendArrow(dimArrow);
+                }
+              });
+            } else {
+              const prefix = sub.slice(0, sharedStart);
+              const shared = sub.slice(sharedStart, sharedStart + SHARED_SEGMENT.length);
+              const suffix = sub.slice(sharedStart + SHARED_SEGMENT.length);
+
+              prefix.forEach((s, idx) => {
+                appendChip(s);
+                const next = idx < prefix.length - 1 ? prefix[idx + 1] : shared[0];
+                const dimArrow = hasFilter && !(isCommonStepMatch(s) || isCommonStepMatch(next));
+                appendArrow(dimArrow);
+              });
+
+              const box = document.createElement('span');
+              box.className = 'sm-shared-box';
+              shared.forEach((s, idx) => {
+                const isMatch = isCommonStepMatch(s);
+                if (isMatch) commonHasMatch = true;
+                const chip = document.createElement('span');
+                chip.className = 'sm-chip';
+                chip.textContent = s;
+                const info = getSecondFlowMeta(item, s);
+                chip.title = `담당팀: ${info.team || '-'} / 시스템: ${info.system || '-'}`;
+                applyChipSystemColor(chip, info);
+                if (hasFilter) chip.classList.add(isMatch ? 'match' : 'dim');
+                box.appendChild(chip);
+                if (idx < shared.length - 1) {
+                  const inArrow = document.createElement('span');
+                  inArrow.className = 'sm-arrow';
+                  inArrow.textContent = '→';
+                  const dimArrow = hasFilter && !(isCommonStepMatch(shared[idx]) || isCommonStepMatch(shared[idx + 1]));
+                  if (dimArrow) inArrow.classList.add('dim');
+                  box.appendChild(inArrow);
+                }
+              });
+              if (hasFilter && !commonHasMatch) box.classList.add('dim');
+              commonChain.appendChild(box);
+
+              suffix.forEach((s, idx) => {
+                const prev = idx === 0 ? shared[shared.length - 1] : suffix[idx - 1];
+                const dimArrow = hasFilter && !(isCommonStepMatch(prev) || isCommonStepMatch(s));
+                appendArrow(dimArrow);
+                appendChip(s);
+              });
+            }
+          } else {
+            const empty = document.createElement('span');
+            empty.className = 'sm-chip dim';
+            empty.textContent = '하위 플로우 없음';
+            commonChain.appendChild(empty);
+          }
+          if (hasFilter && !commonHasMatch) commonMain.classList.add('dim');
+          commonRow.appendChild(commonChain);
+          sitemapFullContentEl.appendChild(commonRow);
+        });
+      } else {
+        const commonRow = document.createElement('div');
+        commonRow.className = 'sm-row';
+        const commonMain = document.createElement('div');
+        commonMain.className = 'sm-main';
+        commonMain.textContent = '지출등록';
+        commonRow.appendChild(commonMain);
+        const commonChain = document.createElement('div');
+        commonChain.className = 'sm-chain';
+        const empty = document.createElement('span');
+        empty.className = 'sm-chip dim';
+        empty.textContent = '하위 플로우 없음';
+        commonChain.appendChild(empty);
+        commonRow.appendChild(commonChain);
+        sitemapFullContentEl.appendChild(commonRow);
+      }
+    }
+    function openSitemapModal() {
+      refreshSitemapFilterOptions();
+      renderSiteMapFull();
+      sitemapModalEl.classList.add('open');
+      sitemapModalEl.setAttribute('aria-hidden', 'false');
+    }
+    function closeSitemapModal() {
+      sitemapModalEl.classList.remove('open');
+      sitemapModalEl.setAttribute('aria-hidden', 'true');
+    }
+
+    function renderVerticalFlow(container, list, activeValue, onSelect, options) {
+      const listEl = document.createElement('div');
+      listEl.className = 'flow-list';
+
+      const {
+        allowEdit = false,
+        onEdit = null,
+        onDelete = null,
+        onMoveUp = null,
+        onMoveDown = null,
+        onInsertAfter = null,
+        onAddEnd = null,
+        getMetaText = null,
+        getConnectorInfo = null,
+        onEditConnector = null,
+        onClearConnector = null
+      } = options || {};
+
+      list.forEach((step, idx) => {
+        if (allowEdit) {
+          const row = document.createElement('div');
+          row.className = 'step-row';
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'step-btn';
+          if (activeValue === step) btn.classList.add('active');
+          const metaText = typeof getMetaText === 'function' ? getMetaText(step, idx) : '';
+          if (metaText) {
+            btn.classList.add('with-meta');
+            btn.innerHTML = `<span class=\"step-main\">${step}</span><span class=\"step-meta\">${metaText}</span>`;
+          } else {
+            btn.textContent = step;
+          }
+          btn.title = step;
+          btn.addEventListener('click', () => onSelect(step));
+          row.appendChild(btn);
+
+          const actions = document.createElement('div');
+          actions.className = 'step-actions';
+
+          const upBtn = document.createElement('button');
+          upBtn.type = 'button';
+          upBtn.className = 'icon-btn';
+          upBtn.title = '위로 이동';
+          upBtn.textContent = '↑';
+          upBtn.disabled = idx === 0;
+          upBtn.style.opacity = idx === 0 ? '0.4' : '1';
+          upBtn.addEventListener('click', () => onMoveUp && onMoveUp(idx));
+          actions.appendChild(upBtn);
+
+          const downBtn = document.createElement('button');
+          downBtn.type = 'button';
+          downBtn.className = 'icon-btn';
+          downBtn.title = '아래로 이동';
+          downBtn.textContent = '↓';
+          downBtn.disabled = idx === list.length - 1;
+          downBtn.style.opacity = idx === list.length - 1 ? '0.4' : '1';
+          downBtn.addEventListener('click', () => onMoveDown && onMoveDown(idx));
+          actions.appendChild(downBtn);
+
+          const editBtn = document.createElement('button');
+          editBtn.type = 'button';
+          editBtn.className = 'icon-btn';
+          editBtn.title = '이름 수정';
+          editBtn.textContent = '✎';
+          editBtn.addEventListener('click', () => onEdit && onEdit(idx));
+          actions.appendChild(editBtn);
+
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'icon-btn delete';
+          delBtn.title = '삭제';
+          delBtn.textContent = '×';
+          delBtn.addEventListener('click', () => onDelete && onDelete(idx));
+          actions.appendChild(delBtn);
+
+          row.appendChild(actions);
+          listEl.appendChild(row);
+        } else {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'step-btn';
+          if (activeValue === step) btn.classList.add('active');
+          const metaText = typeof getMetaText === 'function' ? getMetaText(step, idx) : '';
+          if (metaText) {
+            btn.classList.add('with-meta');
+            btn.innerHTML = `<span class=\"step-main\">${step}</span><span class=\"step-meta\">${metaText}</span>`;
+          } else {
+            btn.textContent = step;
+          }
+          btn.title = step;
+          btn.addEventListener('click', () => onSelect(step));
+          listEl.appendChild(btn);
+        }
+
+        if (idx < list.length - 1) {
+          const connectorInfo = typeof getConnectorInfo === 'function'
+            ? (getConnectorInfo(step, idx, list[idx + 1]) || { broken: false, reason: '' })
+            : { broken: false, reason: '' };
+          if (allowEdit) {
+            const insertWrap = document.createElement('div');
+            insertWrap.className = 'insert-row';
+            const arrow = document.createElement('div');
+            arrow.className = `down-arrow${connectorInfo.broken ? ' broken' : ''}`;
+            arrow.textContent = '↓';
+            insertWrap.appendChild(arrow);
+            if (connectorInfo.reason) {
+              const reason = document.createElement('div');
+              reason.className = 'link-reason';
+              reason.textContent = connectorInfo.reason;
+              insertWrap.appendChild(reason);
+            }
+            if (typeof onEditConnector === 'function') {
+              const linkBtn = document.createElement('button');
+              linkBtn.type = 'button';
+              linkBtn.className = 'link-edit-btn';
+              linkBtn.textContent = connectorInfo.broken ? '연결사유 수정' : '연결끊김 표시';
+              linkBtn.addEventListener('click', () => onEditConnector(idx));
+              insertWrap.appendChild(linkBtn);
+              if (connectorInfo.broken && typeof onClearConnector === 'function') {
+                const clearBtn = document.createElement('button');
+                clearBtn.type = 'button';
+                clearBtn.className = 'link-clear-btn';
+                clearBtn.textContent = '해제';
+                clearBtn.addEventListener('click', () => onClearConnector(idx));
+                insertWrap.appendChild(clearBtn);
+              }
+            }
+            const insertBtn = document.createElement('button');
+            insertBtn.type = 'button';
+            insertBtn.className = 'insert-btn';
+            insertBtn.title = '아래에 삽입';
+            insertBtn.textContent = '+';
+            insertBtn.addEventListener('click', () => onInsertAfter && onInsertAfter(idx));
+            insertWrap.appendChild(insertBtn);
+            listEl.appendChild(insertWrap);
+          } else {
+            const arrow = document.createElement('div');
+            arrow.className = `down-arrow${connectorInfo.broken ? ' broken' : ''}`;
+            arrow.textContent = '↓';
+            listEl.appendChild(arrow);
+            if (connectorInfo.reason) {
+              const reason = document.createElement('div');
+              reason.className = 'link-reason';
+              reason.textContent = connectorInfo.reason;
+              listEl.appendChild(reason);
+            }
+          }
+        }
+      });
+
+      if (allowEdit) {
+        const addEndWrap = document.createElement('div');
+        addEndWrap.className = 'insert-row';
+        const addEndBtn = document.createElement('button');
+        addEndBtn.type = 'button';
+        addEndBtn.className = 'add-end-btn';
+        addEndBtn.textContent = '+ 마지막에 추가';
+        addEndBtn.addEventListener('click', () => onAddEnd && onAddEnd());
+        addEndWrap.appendChild(addEndBtn);
+        listEl.appendChild(addEndWrap);
+      }
+
+      container.appendChild(listEl);
+    }
+    function askStepLabel(defaultValue = '') {
+      const value = prompt('스텝명을 입력해 주세요.', defaultValue);
+      if (value === null) return null;
+      const trimmed = value.trim();
+      if (!trimmed) {
+        alert('스텝명은 비워둘 수 없습니다.');
+        return null;
+      }
+      return trimmed;
+    }
+    function renderCommonSection() {
+      mainCommonSectionEl.innerHTML = '';
+
+      const head = document.createElement('div');
+      head.className = 'common-head';
+      const title = document.createElement('p');
+      title.className = 'common-title';
+      title.textContent = '공통';
+      head.appendChild(title);
+
+      if (editMode) {
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'common-add-btn';
+        addBtn.textContent = '+ 공통 추가';
+        addBtn.addEventListener('click', () => {
+          const next = askStepLabel('');
+          if (!next) return;
+          COMMON_ITEMS.push(next);
+          ensureCommonSubFlowEntry(next);
+          saveFlowModel();
+          renderCommonSection();
+        });
+        head.appendChild(addBtn);
+      }
+
+      mainCommonSectionEl.appendChild(head);
+
+      const list = document.createElement('div');
+      list.className = 'common-list';
+      if (!COMMON_ITEMS.length) {
+        const empty = document.createElement('div');
+        empty.className = 'common-empty';
+        empty.textContent = '공통 항목이 없습니다.';
+        list.appendChild(empty);
+      } else {
+        COMMON_ITEMS.forEach((item, idx) => {
+          if (editMode) {
+            const row = document.createElement('div');
+            row.className = 'common-row';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'common-btn';
+            btn.textContent = item;
+            btn.addEventListener('click', () => {
+              selectedChain = [`common::${item}`];
+              renderAll();
+              openEditor(`common|${item}`, item);
+            });
+            row.appendChild(btn);
+
+            const actions = document.createElement('div');
+            actions.className = 'step-actions';
+
+            const upBtn = document.createElement('button');
+            upBtn.type = 'button';
+            upBtn.className = 'icon-btn';
+            upBtn.title = '위로 이동';
+            upBtn.textContent = '↑';
+            upBtn.disabled = idx === 0;
+            upBtn.style.opacity = idx === 0 ? '0.4' : '1';
+            upBtn.addEventListener('click', () => {
+              if (idx <= 0) return;
+              [COMMON_ITEMS[idx - 1], COMMON_ITEMS[idx]] = [COMMON_ITEMS[idx], COMMON_ITEMS[idx - 1]];
+              saveFlowModel();
+              renderCommonSection();
+            });
+            actions.appendChild(upBtn);
+
+            const downBtn = document.createElement('button');
+            downBtn.type = 'button';
+            downBtn.className = 'icon-btn';
+            downBtn.title = '아래로 이동';
+            downBtn.textContent = '↓';
+            downBtn.disabled = idx === COMMON_ITEMS.length - 1;
+            downBtn.style.opacity = idx === COMMON_ITEMS.length - 1 ? '0.4' : '1';
+            downBtn.addEventListener('click', () => {
+              if (idx >= COMMON_ITEMS.length - 1) return;
+              [COMMON_ITEMS[idx + 1], COMMON_ITEMS[idx]] = [COMMON_ITEMS[idx], COMMON_ITEMS[idx + 1]];
+              saveFlowModel();
+              renderCommonSection();
+            });
+            actions.appendChild(downBtn);
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'icon-btn';
+            editBtn.title = '이름 수정';
+            editBtn.textContent = '✎';
+            editBtn.addEventListener('click', () => {
+              const next = askStepLabel(item);
+              if (!next || next === item) return;
+              COMMON_ITEMS[idx] = next;
+              const oldFlow = ensureCommonSubFlowEntry(item);
+              COMMON_SUB_FLOW[next] = oldFlow;
+              if (next !== item) delete COMMON_SUB_FLOW[item];
+              saveFlowModel();
+              renderCommonSection();
+            });
+            actions.appendChild(editBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'icon-btn delete';
+            delBtn.title = '삭제';
+            delBtn.textContent = '×';
+            delBtn.addEventListener('click', () => {
+              if (!confirm(`'${item}' 공통 항목을 삭제할까요?`)) return;
+              COMMON_ITEMS.splice(idx, 1);
+              delete COMMON_SUB_FLOW[item];
+              saveFlowModel();
+              renderCommonSection();
+            });
+            actions.appendChild(delBtn);
+            row.appendChild(actions);
+            list.appendChild(row);
+          } else {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'common-btn';
+            btn.textContent = item;
+            btn.addEventListener('click', () => {
+              selectedChain = [`common::${item}`];
+              renderAll();
+              openEditor(`common|${item}`, item);
+            });
+            list.appendChild(btn);
+          }
+        });
+      }
+      mainCommonSectionEl.appendChild(list);
+    }
+
+    function renderMain() {
+      mainFlowEl.innerHTML = '';
+      mainFlowEl.scrollTop = 0;
+      mainPanelEl.scrollTop = 0;
+      renderVerticalFlow(mainFlowEl, MAIN_STEPS, selectedChain[0], (step) => {
+        selectedChain = [step];
+        renderAll();
+        openEditor(`main|${step}`, step);
+      }, {
+        allowEdit: editMode,
+        onEdit: (idx) => {
+          const oldStep = MAIN_STEPS[idx];
+          const next = askStepLabel(oldStep);
+          if (!next || next === oldStep) return;
+          MAIN_STEPS[idx] = next;
+          if (SUB_FLOW[oldStep]) {
+            SUB_FLOW[next] = SUB_FLOW[oldStep];
+            delete SUB_FLOW[oldStep];
+            const migrated = {};
+            Object.entries(subFlowLinks).forEach(([k, v]) => {
+              if (k.startsWith(`${oldStep}||`)) {
+                migrated[k.replace(`${oldStep}||`, `${next}||`)] = v;
+              } else {
+                migrated[k] = v;
+              }
+            });
+            subFlowLinks = migrated;
+          } else if (!SUB_FLOW[next]) {
+            SUB_FLOW[next] = [];
+          }
+          if (selectedChain[0] === oldStep) {
+            selectedChain[0] = next;
+          }
+          saveFlowModel();
+          renderAll();
+        },
+        onDelete: (idx) => {
+          const target = MAIN_STEPS[idx];
+          if (!confirm(`'${target}' 스텝을 삭제할까요?`)) return;
+          MAIN_STEPS.splice(idx, 1);
+          delete SUB_FLOW[target];
+          Object.keys(subFlowLinks).forEach((k) => {
+            if (k.startsWith(`${target}||`)) delete subFlowLinks[k];
+          });
+          if (selectedChain[0] === target) {
+            selectedChain = [];
+            closeEditor();
+          }
+          saveFlowModel();
+          renderAll();
+        },
+        onMoveUp: (idx) => {
+          if (idx <= 0) return;
+          [MAIN_STEPS[idx - 1], MAIN_STEPS[idx]] = [MAIN_STEPS[idx], MAIN_STEPS[idx - 1]];
+          saveFlowModel();
+          renderAll();
+        },
+        onMoveDown: (idx) => {
+          if (idx >= MAIN_STEPS.length - 1) return;
+          [MAIN_STEPS[idx + 1], MAIN_STEPS[idx]] = [MAIN_STEPS[idx], MAIN_STEPS[idx + 1]];
+          saveFlowModel();
+          renderAll();
+        },
+        onInsertAfter: (idx) => {
+          const next = askStepLabel('');
+          if (!next) return;
+          MAIN_STEPS.splice(idx + 1, 0, next);
+          if (!SUB_FLOW[next]) SUB_FLOW[next] = [];
+          saveFlowModel();
+          renderAll();
+        },
+        onAddEnd: () => {
+          const next = askStepLabel('');
+          if (!next) return;
+          MAIN_STEPS.push(next);
+          if (!SUB_FLOW[next]) SUB_FLOW[next] = [];
+          saveFlowModel();
+          renderAll();
+        }
+      });
+      renderCommonSection();
+    }
+
+    function renderDrillColumns() {
+      drillColumnsEl.innerHTML = '';
+
+      if (!selectedChain[0]) return;
+
+      let level = 0;
+      while (true) {
+        if (level >= 1) break;
+        const pivot = selectedChain[level];
+        const list = getNextFlow(level, pivot);
+        const isCommonPivot = String(pivot).startsWith('common::');
+        const allowEmptyCommonPanel = level === 0 && isCommonPivot;
+        if (!list.length && !allowEmptyCommonPanel) break;
+
+        const panel = document.createElement('section');
+        panel.className = 'flow-panel';
+        const panelLevel = level;
+        const panelPivot = getPivotLabel(pivot);
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'panel-title-row';
+
+        const title = document.createElement('h2');
+        title.className = 'title';
+        title.textContent = `${panelPivot} FLOW`;
+        titleRow.appendChild(title);
+
+        const badge = document.createElement('span');
+        badge.className = 'panel-badge';
+        badge.textContent = `LV.${panelLevel + 2}`;
+        titleRow.appendChild(badge);
+
+        panel.appendChild(titleRow);
+
+        if (!list.length && !editMode) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = '하위 플로우가 없습니다.';
+          panel.appendChild(empty);
+        }
+
+        renderVerticalFlow(panel, list, selectedChain[panelLevel + 1], (step) => {
+          selectedChain = selectedChain.slice(0, panelLevel + 1);
+          selectedChain[panelLevel + 1] = step;
+          renderAll();
+          openEditor(`${panelLevel}|${panelPivot}|${step}`, step);
+        }, {
+          getMetaText: panelLevel === 0 && !isCommonPivot ? (step) => {
+            const key = `0|${panelPivot}|${step}`;
+            const info = stepMeta[key] || {};
+            const team = info.team || '-';
+            const system = info.system || '-';
+            return `담당팀: ${team} | 시스템: ${system}`;
+          } : null,
+          getConnectorInfo: panelLevel === 0 && !isCommonPivot ? (fromStep, idx, toStep) => {
+            const link = getSubFlowLinkInfo(panelPivot, fromStep, toStep);
+            return { broken: Boolean(link.reason), reason: link.reason || '' };
+          } : null,
+          onEditConnector: panelLevel === 0 && !isCommonPivot ? (idx) => {
+            const fromStep = list[idx];
+            const toStep = list[idx + 1];
+            if (!fromStep || !toStep) return;
+            const current = getSubFlowLinkInfo(panelPivot, fromStep, toStep).reason || '';
+            const value = prompt(`'${fromStep}' -> '${toStep}' 연결 사유를 입력하세요.\n(비우면 정상 연결로 복구)`, current);
+            if (value === null) return;
+            setSubFlowLinkReason(panelPivot, fromStep, toStep, value);
+            saveFlowModel();
+            renderAll();
+          } : null,
+          onClearConnector: panelLevel === 0 && !isCommonPivot ? (idx) => {
+            const fromStep = list[idx];
+            const toStep = list[idx + 1];
+            if (!fromStep || !toStep) return;
+            setSubFlowLinkReason(panelPivot, fromStep, toStep, '');
+            saveFlowModel();
+            renderAll();
+          } : null,
+          allowEdit: editMode,
+          onEdit: (idx) => {
+            const targetList = panelLevel === 0
+              ? (isCommonPivot ? ensureCommonSubFlowEntry(panelPivot) : (SUB_FLOW[panelPivot] || []))
+              : (DRILL_FLOW[panelPivot] || []);
+            const oldStep = targetList[idx];
+            const next = askStepLabel(oldStep);
+            if (!next || next === oldStep) return;
+            targetList[idx] = next;
+            if (panelLevel === 0 && !isCommonPivot) remapSubFlowLinksOnRename(panelPivot, oldStep, next);
+            if (DRILL_FLOW[oldStep]) {
+              DRILL_FLOW[next] = DRILL_FLOW[oldStep];
+              delete DRILL_FLOW[oldStep];
+            }
+            if (selectedChain[panelLevel + 1] === oldStep) {
+              selectedChain[panelLevel + 1] = next;
+            }
+            if (panelLevel === 0 && !isCommonPivot) syncSubFlowLinks(panelPivot);
+            saveFlowModel();
+            renderAll();
+          },
+          onDelete: (idx) => {
+            const targetList = panelLevel === 0
+              ? (isCommonPivot ? ensureCommonSubFlowEntry(panelPivot) : (SUB_FLOW[panelPivot] || []))
+              : (DRILL_FLOW[panelPivot] || []);
+            const target = targetList[idx];
+            if (!confirm(`'${target}' 스텝을 삭제할까요?`)) return;
+            targetList.splice(idx, 1);
+            if (selectedChain[panelLevel + 1] === target) {
+              selectedChain = selectedChain.slice(0, panelLevel + 1);
+              closeEditor();
+            }
+            if (panelLevel === 0 && !isCommonPivot) syncSubFlowLinks(panelPivot);
+            saveFlowModel();
+            renderAll();
+          },
+          onMoveUp: (idx) => {
+            const targetList = panelLevel === 0
+              ? (isCommonPivot ? ensureCommonSubFlowEntry(panelPivot) : (SUB_FLOW[panelPivot] || []))
+              : (DRILL_FLOW[panelPivot] || []);
+            if (idx <= 0) return;
+            [targetList[idx - 1], targetList[idx]] = [targetList[idx], targetList[idx - 1]];
+            if (panelLevel === 0 && !isCommonPivot) syncSubFlowLinks(panelPivot);
+            saveFlowModel();
+            renderAll();
+          },
+          onMoveDown: (idx) => {
+            const targetList = panelLevel === 0
+              ? (isCommonPivot ? ensureCommonSubFlowEntry(panelPivot) : (SUB_FLOW[panelPivot] || []))
+              : (DRILL_FLOW[panelPivot] || []);
+            if (idx >= targetList.length - 1) return;
+            [targetList[idx + 1], targetList[idx]] = [targetList[idx], targetList[idx + 1]];
+            if (panelLevel === 0 && !isCommonPivot) syncSubFlowLinks(panelPivot);
+            saveFlowModel();
+            renderAll();
+          },
+          onInsertAfter: (idx) => {
+            const targetList = panelLevel === 0
+              ? (isCommonPivot ? ensureCommonSubFlowEntry(panelPivot) : (SUB_FLOW[panelPivot] || []))
+              : (DRILL_FLOW[panelPivot] || []);
+            const next = askStepLabel('');
+            if (!next) return;
+            targetList.splice(idx + 1, 0, next);
+            if (!DRILL_FLOW[next]) DRILL_FLOW[next] = [];
+            if (panelLevel === 0 && !isCommonPivot) syncSubFlowLinks(panelPivot);
+            saveFlowModel();
+            renderAll();
+          },
+          onAddEnd: () => {
+            const targetList = panelLevel === 0
+              ? (isCommonPivot ? ensureCommonSubFlowEntry(panelPivot) : (SUB_FLOW[panelPivot] || []))
+              : (DRILL_FLOW[panelPivot] || []);
+            const next = askStepLabel('');
+            if (!next) return;
+            targetList.push(next);
+            if (!DRILL_FLOW[next]) DRILL_FLOW[next] = [];
+            if (panelLevel === 0 && !isCommonPivot) syncSubFlowLinks(panelPivot);
+            saveFlowModel();
+            renderAll();
+          }
+        });
+
+        drillColumnsEl.appendChild(panel);
+
+        if (!selectedChain[panelLevel + 1]) {
+          break;
+        }
+
+        level += 1;
+      }
+    }
+
+    function renderAll() {
+      renderMain();
+      renderDrillColumns();
+    }
+
+    editorCloseEl.addEventListener('click', closeEditor);
+    editorClearImageEl.addEventListener('click', () => {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      if (!info.images.length) return;
+      info.images.splice(currentImageIndex, 1);
+      info.imageNotes.splice(currentImageIndex, 1);
+      if (currentImageIndex >= info.images.length) {
+        currentImageIndex = Math.max(0, info.images.length - 1);
+      }
+      info.image = info.images[0] || '';
+      saveStepMeta();
+      renderEditorPreview(editorTitleEl.textContent.replace(' DETAIL', ''));
+    });
+    editorImageInputEl.addEventListener('change', (e) => {
+      if (!editingKey) return;
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+      if (!imageFiles.length) {
+        alert('이미지 파일만 선택할 수 있습니다.');
+        e.target.value = '';
+        return;
+      }
+      const targetKey = editingKey;
+      const readJobs = imageFiles.map((file) => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      }));
+      Promise.all(readJobs).then((images) => {
+        const validImages = images.filter(Boolean);
+        if (!validImages.length) return;
+        const info = ensureMeta(targetKey);
+        info.images.push(...validImages);
+        info.imageNotes.push(...validImages.map(() => ''));
+        info.image = info.images[0] || '';
+        if (editingKey === targetKey) {
+          currentImageIndex = info.images.length - validImages.length;
+          renderEditorPreview(editorTitleEl.textContent.replace(' DETAIL', ''));
+        }
+        saveStepMeta();
+      });
+      e.target.value = '';
+    });
+    editorPrevImageEl.addEventListener('click', () => {
+      if (!editingKey || currentImageIndex <= 0) return;
+      currentImageIndex -= 1;
+      renderEditorPreview(editorTitleEl.textContent.replace(' DETAIL', ''));
+    });
+    editorNextImageEl.addEventListener('click', () => {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      if (currentImageIndex >= info.images.length - 1) return;
+      currentImageIndex += 1;
+      renderEditorPreview(editorTitleEl.textContent.replace(' DETAIL', ''));
+    });
+    editorNoteInputEl.addEventListener('input', () => {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      info.note = editorNoteInputEl.value;
+      saveStepMeta();
+    });
+    editorImageNoteInputEl.addEventListener('input', () => {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      if (!info.images.length) return;
+      info.imageNotes[currentImageIndex] = editorImageNoteInputEl.value;
+      saveStepMeta();
+    });
+    editorPathInputEl.addEventListener('input', () => {
+      if (!editingKey) return;
+      const info = ensureMeta(editingKey);
+      info.path = editorPathInputEl.value;
+      saveStepMeta();
+    });
+    editorTeamInputEl.addEventListener('input', () => {
+      if (!editingKey || !isSecondFlowKey(editingKey)) return;
+      const info = ensureMeta(editingKey);
+      info.team = editorTeamInputEl.value;
+      saveStepMeta();
+      renderAll();
+    });
+    editorSystemInputEl.addEventListener('input', () => {
+      if (!editingKey || !isSecondFlowKey(editingKey)) return;
+      const info = ensureMeta(editingKey);
+      info.system = editorSystemInputEl.value;
+      saveStepMeta();
+      renderAll();
+    });
+    editModeBtnEl.addEventListener('click', () => {
+      editMode = !editMode;
+      editModeBtnEl.classList.toggle('active', editMode);
+      editModeBtnEl.textContent = editMode ? '편집중' : '편집모드';
+      renderAll();
+    });
+    imageModalCloseEl.addEventListener('click', closeImageModal);
+    imageModalPrevEl.addEventListener('click', () => {
+      if (!imageModalEl.classList.contains('open')) return;
+      modalImageIndex -= 1;
+      updateImageModalView('확대 이미지');
+    });
+    imageModalNextEl.addEventListener('click', () => {
+      if (!imageModalEl.classList.contains('open')) return;
+      modalImageIndex += 1;
+      updateImageModalView('확대 이미지');
+    });
+    imageModalEl.addEventListener('click', (e) => {
+      if (e.target === imageModalEl) closeImageModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (imageModalEl.classList.contains('open')) {
+        if (e.key === 'ArrowLeft') {
+          modalImageIndex -= 1;
+          updateImageModalView('확대 이미지');
+        }
+        if (e.key === 'ArrowRight') {
+          modalImageIndex += 1;
+          updateImageModalView('확대 이미지');
+        }
+      }
+      if (e.key === 'Escape' && imageModalEl.classList.contains('open')) {
+        closeImageModal();
+      }
+      if (e.key === 'Escape' && sitemapModalEl.classList.contains('open')) {
+        closeSitemapModal();
+      }
+    });
+    sitemapOpenBtnEl.addEventListener('click', openSitemapModal);
+    dataExportBtnEl.addEventListener('click', exportAllData);
+    dataImportBtnEl.addEventListener('click', () => dataImportInputEl.click());
+    dataImportInputEl.addEventListener('change', (e) => {
+      const [file] = e.target.files || [];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        importAllData(String(reader.result || ''));
+      };
+      reader.onerror = () => {
+        alert('파일을 읽을 수 없습니다.');
+      };
+      reader.readAsText(file, 'utf-8');
+      e.target.value = '';
+    });
+    sitemapCloseBtnEl.addEventListener('click', closeSitemapModal);
+    sitemapTeamSelectEl.addEventListener('change', () => {
+      sitemapFilterTeam = sitemapTeamSelectEl.value;
+      renderSiteMapFull();
+    });
+    sitemapSystemSelectEl.addEventListener('change', () => {
+      sitemapFilterSystem = sitemapSystemSelectEl.value;
+      renderSiteMapFull();
+    });
+    sitemapModalEl.addEventListener('click', (e) => {
+      if (e.target === sitemapModalEl) closeSitemapModal();
+    });
+
+    (async () => {
+      loadFlowModel();
+      loadStepMeta();
+      await loadFromIdbFallback();
+      await bootstrapDefaultJsonIfEmpty();
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
